@@ -35,6 +35,7 @@ import * as s14e from './s14e-serializer.js';
 
 const STORAGE_NAME = 'uBlock0CacheStorage';
 const extensionStorage = webext.storage.local;
+const defaultFastCache = 'indexedDB';
 
 const keysFromGetArg = arg => {
     if ( arg === null || arg === undefined ) { return []; }
@@ -45,8 +46,6 @@ const keysFromGetArg = arg => {
     return Object.keys(arg);
 };
 
-let fastCache = 'indexedDB';
-
 /*******************************************************************************
  * 
  * Extension storage
@@ -56,6 +55,15 @@ let fastCache = 'indexedDB';
  * */
 
 const cacheStorage = (( ) => {
+    let fastCache;
+
+    const getFastCacheStorage = ( ) => {
+        if ( fastCache === undefined ) {
+            ubolog(`Cache storage backend not selected, using default`);
+            fastCache = defaultFastCache;
+        }
+        return cacheAPIs[fastCache];
+    };
 
     const exGet = (api, wanted, outbin) => {
         return api.get(wanted).then(inbin => {
@@ -96,7 +104,7 @@ const cacheStorage = (( ) => {
         get(argbin) {
             const outbin = {};
             return exGet(
-                cacheAPIs[fastCache],
+                getFastCacheStorage(),
                 keysFromGetArg(argbin),
                 outbin
             ).then(wanted => {
@@ -123,7 +131,7 @@ const cacheStorage = (( ) => {
 
         async keys(regex) {
             const results = await Promise.all([
-                cacheAPIs[fastCache].keys(regex),
+                getFastCacheStorage().keys(regex),
                 extensionStorage.get(null).catch(( ) => {}),
             ]);
             const keys = new Set(results[0]);
@@ -144,28 +152,38 @@ const cacheStorage = (( ) => {
                 promises.push(compress(serializedbin, key, rawbin[key]));
             }
             await Promise.all(promises);
-            cacheAPIs[fastCache].set(rawbin, serializedbin);
+            getFastCacheStorage().set(rawbin, serializedbin);
             return extensionStorage.set(serializedbin).catch(reason => {
                 ubolog(reason);
             });
         },
 
         remove(...args) {
-            cacheAPIs[fastCache].remove(...args);
+            getFastCacheStorage().remove(...args);
             return extensionStorage.remove(...args).catch(reason => {
                 ubolog(reason);
             });
         },
 
         clear(...args) {
-            cacheAPIs[fastCache].clear(...args);
+            getFastCacheStorage().clear(...args);
             return extensionStorage.clear(...args).catch(reason => {
                 ubolog(reason);
             });
         },
 
         select(api) {
-            if ( cacheAPIs.hasOwnProperty(api) === false ) { return fastCache; }
+            if ( fastCache !== undefined ) {
+                ubolog(`Refusing cache storage backend change`);
+                return fastCache;
+            }
+            if ( cacheAPIs.hasOwnProperty(api) === false ) {
+                if ( api !== undefined && api !== 'unset' ) {
+                    ubolog(`Ignoring unimplemented cache storage backend`);
+                }
+                fastCache = defaultFastCache;
+                return fastCache;
+            }
             fastCache = api;
             for ( const k of Object.keys(cacheAPIs) ) {
                 if ( k === api ) { continue; }
