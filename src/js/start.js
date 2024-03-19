@@ -397,22 +397,22 @@ const createDefaultProps = ( ) => {
 try {
     ubolog(`Start sequence of loading storage-based data ${Date.now()-vAPI.T0} ms after launch`);
 
-    // https://github.com/gorhill/uBlock/issues/531
-    await µb.restoreAdminSettings();
-    ubolog(`Admin settings ready ${Date.now()-vAPI.T0} ms after launch`);
-
     await µb.loadHiddenSettings();
     await onHiddenSettingsReady();
     ubolog(`Hidden settings ready ${Date.now()-vAPI.T0} ms after launch`);
-
-    const adminExtra = await vAPI.adminStorage.get('toAdd');
-    ubolog(`Extra admin settings ready ${Date.now()-vAPI.T0} ms after launch`);
 
     // Maybe override default cache storage
     µb.supportStats.cacheBackend = await cacheStorage.select(
         µb.hiddenSettings.cacheStorageAPI
     );
     ubolog(`Backend storage for cache will be ${µb.supportStats.cacheBackend}`);
+
+    // https://github.com/gorhill/uBlock/issues/531
+    await µb.restoreAdminSettings();
+    ubolog(`Admin settings ready ${Date.now()-vAPI.T0} ms after launch`);
+
+    const adminExtra = await vAPI.adminStorage.get('toAdd');
+    ubolog(`Extra admin settings ready ${Date.now()-vAPI.T0} ms after launch`);
 
     await vAPI.storage.get(createDefaultProps()).then(async fetched => {
         ubolog(`Version ready ${Date.now()-vAPI.T0} ms after launch`);
