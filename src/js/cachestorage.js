@@ -152,24 +152,30 @@ const cacheStorage = (( ) => {
                 promises.push(compress(serializedbin, key, rawbin[key]));
             }
             await Promise.all(promises);
-            getFastCacheStorage().set(rawbin, serializedbin);
-            return extensionStorage.set(serializedbin).catch(reason => {
-                ubolog(reason);
-            });
+            return Promise.all([
+                getFastCacheStorage().set(rawbin, serializedbin),
+                extensionStorage.set(serializedbin).catch(reason => {
+                    ubolog(reason);
+                })
+            ]);
         },
 
         remove(...args) {
-            getFastCacheStorage().remove(...args);
-            return extensionStorage.remove(...args).catch(reason => {
-                ubolog(reason);
-            });
+            return Promise.all([
+                getFastCacheStorage().remove(...args),
+                extensionStorage.remove(...args).catch(reason => {
+                    ubolog(reason);
+                })
+            ]);
         },
 
         clear(...args) {
-            getFastCacheStorage().clear(...args);
-            return extensionStorage.clear(...args).catch(reason => {
-                ubolog(reason);
-            });
+            return Promise.all([
+                getFastCacheStorage().clear(...args),
+                extensionStorage.clear(...args).catch(reason => {
+                    ubolog(reason);
+                })
+            ]);
         },
 
         select(api) {
